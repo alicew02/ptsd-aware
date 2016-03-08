@@ -40,12 +40,19 @@ public class SettingsActivity extends PreferenceActivity {
      */
     private static final boolean ALWAYS_SIMPLE_PREFS = false;
 
+    public DatabaseHelper databaseHelper = null;
+
 
     @Override
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
 
         setupSimplePreferencesScreen();
+        loadDatabase();
+    }
+
+    private void loadDatabase() {
+        databaseHelper = new DatabaseHelper(this);
     }
 
     /**
