@@ -2,6 +2,7 @@ package com.teamcasey.watchdog;
 
 import android.app.Activity;
 import android.content.ContentValues;
+import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
@@ -32,6 +33,8 @@ public class DatabaseShowcaseActivity extends Activity {
         final Button deleteButton = (Button) findViewById(R.id.deleterowbtn);
         final Button listButton = (Button) findViewById(R.id.listrowbtn);
 
+        final Button menuTestButton = (Button) findViewById(R.id.menuTest);
+
 
         addButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -48,6 +51,12 @@ public class DatabaseShowcaseActivity extends Activity {
         listButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 logCurrentTableStructure();
+            }
+        });
+
+        menuTestButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                toMenuTest(v);
             }
         });
     }
@@ -90,5 +99,11 @@ public class DatabaseShowcaseActivity extends Activity {
 
             returnedRows.moveToNext();
         }
+    }
+
+
+    private void toMenuTest(View view) {
+        Intent intent = new Intent(this, ButtonTestActivity.class);
+        startActivity(intent);
     }
 }
