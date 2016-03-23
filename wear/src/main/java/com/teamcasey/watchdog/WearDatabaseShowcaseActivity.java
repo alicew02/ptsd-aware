@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -12,19 +13,19 @@ import android.widget.Button;
  * Created by seth on 3/6/16.
  */
 public class WearDatabaseShowcaseActivity extends Activity {
-    private WearDatabaseHelper databaseHelper = null;
+    final public WearDatabaseHelper database = new WearDatabaseHelper(this);
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        openDB();
         setContentView(R.layout.wear_database_layout);
         setupButtonListeners();
     }
 
-    private void openDB() {
-        this.databaseHelper = new WearDatabaseHelper(this);
+    //Getter such that the async tasks can get the database
+    public WearDatabaseHelper getDatabase() {
+        return this.database;
     }
 
     private void setupButtonListeners() {
@@ -35,50 +36,30 @@ public class WearDatabaseShowcaseActivity extends Activity {
 
         addButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                insertRandomHeartRateRow();
+                new InsertHeartRateRow().execute(50, 25, 30);
             }
         });
 
         deleteButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                deleteAllHeartRateRows();
+                new DeleteHeartRateRow().execute();
             }
         });
 
         listButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                logCurrentTableStructure();
+                new GetHeartRateRows().execute();
             }
         });
     }
 
-
-    private void insertRandomHeartRateRow() {
-        SQLiteDatabase db = databaseHelper.getWritableDatabase();
-
-        ContentValues valuesToInsert = new ContentValues();
-        valuesToInsert.put(WearDatabaseHelper.HeartRateTableConstants.COL1, 50);
-        valuesToInsert.put(WearDatabaseHelper.HeartRateTableConstants.COL3, 0);
-
-        db.insert(WearDatabaseHelper.HeartRateTableConstants.TABLE_NAME, null, valuesToInsert);
-    }
-
-    private void deleteAllHeartRateRows() {
-        SQLiteDatabase db = databaseHelper.getWritableDatabase();
-
-        db.delete(WearDatabaseHelper.HeartRateTableConstants.TABLE_NAME,
-                WearDatabaseHelper.HeartRateTableConstants.COL1 + " >= 50;", null);
-    }
-
-    private void logCurrentTableStructure() {
-        SQLiteDatabase db = databaseHelper.getWritableDatabase();
-
-        String[] columns = {WearDatabaseHelper.HeartRateTableConstants.KEY_ID,
-                WearDatabaseHelper.HeartRateTableConstants.COL1,
-                WearDatabaseHelper.HeartRateTableConstants.COL2};
-
-        Cursor returnedRows = db.query(WearDatabaseHelper.HeartRateTableConstants.TABLE_NAME, columns, null, null, null, null, null);
-
+    /**
+     * An interfacing method used for passing data from an async task back to this activity
+     * via the UI thread
+     *
+     * @param returnedRows -> Cursor from an async tasks that lets you explore the returned rows
+     */
+    private void logCurrentTableStructure(Cursor returnedRows) {
         returnedRows.moveToFirst();
 
         while (returnedRows.isAfterLast() == false) {
@@ -89,6 +70,106 @@ public class WearDatabaseShowcaseActivity extends Activity {
             System.out.println(id + " " + bpm + " " + date);
 
             returnedRows.moveToNext();
+        }
+    }
+
+    /**
+     * Class for inserting heart rate rows via the background thread during the calibrating period
+     * How to use: Long[] result = new InsertHeartRateRowInCalibratingPeriod().execute(10, 20, 30);
+     * Where 10, 20 and 30 above are different heartbeat readings
+     *
+     * @return Long[] -> a list of inserted heart rate row IDs
+     */
+    private class InsertHeartRateRowInCalibratingPeriod extends AsyncTask<Integer, Void, Long[]> {
+        @Override
+        protected Long[] doInBackground(Integer... heartRates) {
+            SQLiteDatabase db = WearDatabaseShowcaseActivity.this.getDatabase().getWritableDatabase();
+            Long[] insertedRowIDs = new Long[heartRates.length];
+            int counter = 0;
+
+            for (Integer heartRate : heartRates) {
+                ContentValues valuesToInsert = new ContentValues();
+                valuesToInsert.put(WearDatabaseHelper.HeartRateTableConstants.COL1, heartRate);
+                valuesToInsert.put(WearDatabaseHelper.HeartRateTableConstants.COL3, 1);
+
+                Long insertedRowID = db.insert(WearDatabaseHelper.HeartRateTableConstants.TABLE_NAME, null, valuesToInsert);
+
+                insertedRowIDs[counter] = insertedRowID;
+                counter++;
+            }
+
+            return insertedRowIDs;
+        }
+    }
+
+    /**
+     * Class for inserting heart rate rows via the background thread not during the calibrating period
+     * How to use: Long[] result = new InsertHeartRateRow().execute(10, 20, 30);
+     * Where 10, 20 and 30 above are different heartbeat readings
+     *
+     * @return Long[] -> a list of inserted heart rate row IDs
+     */
+    private class InsertHeartRateRow extends AsyncTask<Integer, Void, Long[]> {
+        @Override
+        protected Long[] doInBackground(Integer... heartRates) {
+            SQLiteDatabase db = WearDatabaseShowcaseActivity.this.getDatabase().getWritableDatabase();
+            Long[] insertedRowIDs = new Long[heartRates.length];
+            int counter = 0;
+
+            for (Integer heartRate : heartRates) {
+                ContentValues valuesToInsert = new ContentValues();
+                valuesToInsert.put(WearDatabaseHelper.HeartRateTableConstants.COL1, heartRate);
+                valuesToInsert.put(WearDatabaseHelper.HeartRateTableConstants.COL3, 0);
+
+                Long insertedRowID = db.insert(WearDatabaseHelper.HeartRateTableConstants.TABLE_NAME, null, valuesToInsert);
+
+                insertedRowIDs[counter] = insertedRowID;
+                counter++;
+            }
+
+            return insertedRowIDs;
+        }
+    }
+
+    /**
+     * Class for deleting all heart rate rows via the background thread
+     *
+     * Doesn't return anything
+     */
+    private class DeleteHeartRateRow extends AsyncTask<Void, Void, Void> {
+        @Override
+        protected Void doInBackground(Void... nothing) {
+            SQLiteDatabase db = WearDatabaseShowcaseActivity.this.getDatabase().getWritableDatabase();
+
+            db.delete(WearDatabaseHelper.HeartRateTableConstants.TABLE_NAME,
+                    WearDatabaseHelper.HeartRateTableConstants.COL1 + " >= 0;", null);
+
+            return null;
+        }
+    }
+
+
+    /**
+     * Class for getting the heart rate rows out of the table, interesting because
+     * it shows how to pass data from an async task to the enclosing activity using
+     * onPostExecute (which runs on the UI thread instead of in the background)
+     */
+    private class GetHeartRateRows extends AsyncTask<Void, Void, Cursor> {
+        @Override
+        protected Cursor doInBackground(Void... nothing) {
+            SQLiteDatabase db = WearDatabaseShowcaseActivity.this.getDatabase().getWritableDatabase();
+
+            String[] columns = {WearDatabaseHelper
+                    .HeartRateTableConstants.KEY_ID,
+                    WearDatabaseHelper.HeartRateTableConstants.COL1,
+                    WearDatabaseHelper.HeartRateTableConstants.COL2};
+
+            return db.query(WearDatabaseHelper.HeartRateTableConstants.TABLE_NAME, columns, null, null, null, null, null);
+        }
+
+        @Override
+        protected void onPostExecute(Cursor returnedRows) {
+            WearDatabaseShowcaseActivity.this.logCurrentTableStructure(returnedRows);
         }
     }
 }
