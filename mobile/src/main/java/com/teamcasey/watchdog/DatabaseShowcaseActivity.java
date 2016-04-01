@@ -9,6 +9,9 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 /**
  * Created by seth on 3/6/16.
  */
@@ -60,17 +63,18 @@ public class DatabaseShowcaseActivity extends Activity {
      * @param returnedRows -> Cursor from an async tasks that lets you explore the returned rows
      */
     private void logCurrentTableStructure(Cursor returnedRows) {
-        returnedRows.moveToFirst();
+        DatabaseToJSONConverter converter = new DatabaseToJSONConverter(returnedRows);
 
-        while (returnedRows.isAfterLast() == false) {
-            String id = returnedRows.getString(0);
-            String bpm = returnedRows.getString(1);
-            String date = returnedRows.getString(2);
+        JSONObject results = null;
 
-            System.out.println(id + " " + bpm + " " + date);
-
-            returnedRows.moveToNext();
+        try {
+            results = converter.getJSON();
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
+
+        System.out.println(results.toString());
+        new JSONToDatabaseConverter(results, this.getDatabase());
     }
 
     /**
@@ -161,7 +165,8 @@ public class DatabaseShowcaseActivity extends Activity {
 
             String[] columns = {DatabaseHelper.HeartRateTableConstants.KEY_ID,
                     DatabaseHelper.HeartRateTableConstants.COL1,
-                    DatabaseHelper.HeartRateTableConstants.COL2};
+                    DatabaseHelper.HeartRateTableConstants.COL2,
+                    DatabaseHelper.HeartRateTableConstants.COL3};
 
             return db.query(DatabaseHelper.HeartRateTableConstants.TABLE_NAME, columns, null, null, null, null, null);
         }
