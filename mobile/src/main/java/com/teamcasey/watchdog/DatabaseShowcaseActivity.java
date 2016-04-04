@@ -1,13 +1,28 @@
 package com.teamcasey.watchdog;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.ContentValues;
+import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.os.Handler;
+import android.os.Message;
+import android.content.IntentFilter;
+
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.wearable.MessageApi;
+import com.google.android.gms.wearable.Node;
+import com.google.android.gms.wearable.NodeApi;
+import com.google.android.gms.wearable.Wearable;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -15,8 +30,13 @@ import org.json.JSONObject;
 /**
  * Created by seth on 3/6/16.
  */
-public class DatabaseShowcaseActivity extends Activity {
+public class DatabaseShowcaseActivity extends Activity implements GoogleApiClient.ConnectionCallbacks,
+        GoogleApiClient.OnConnectionFailedListener {
     final public DatabaseHelper database = new DatabaseHelper(this);
+    GoogleApiClient googleClient;
+    String datapath = "/message_path";
+    Handler handler;
+    String TAG = "Mobile DatabaseShowcaseActivity";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -24,6 +44,7 @@ public class DatabaseShowcaseActivity extends Activity {
 
         setContentView(R.layout.database_layout);
         setupButtonListeners();
+        setupMessaging();
     }
 
     //Getter such that the async tasks can get the database
@@ -51,6 +72,7 @@ public class DatabaseShowcaseActivity extends Activity {
 
         listButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
+                new SendThread(datapath, "Hello wearable device").start();
                 new GetHeartRateRows().execute();
             }
         });
@@ -174,6 +196,98 @@ public class DatabaseShowcaseActivity extends Activity {
         @Override
         protected void onPostExecute(Cursor returnedRows) {
             DatabaseShowcaseActivity.this.logCurrentTableStructure(returnedRows);
+        }
+    }
+
+    //sets up the google api client such that we can send and recieve messages from the watch
+    private void setupMessaging() {
+        googleClient = new GoogleApiClient.Builder(this)
+                .addApi(Wearable.API)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .build();
+
+        handler = new Handler(new Handler.Callback() {
+
+            @Override
+            public boolean handleMessage(Message msg) {
+                Bundle stuff = msg.getData();
+                System.out.println(stuff.getString("logthis"));
+                return true;
+            }
+        });
+
+        IntentFilter messageFilter = new IntentFilter(Intent.ACTION_SEND);
+        MessageReceiver messageReceiver = new MessageReceiver();
+        LocalBroadcastManager.getInstance(this).registerReceiver(messageReceiver, messageFilter);
+    }
+
+    //setup a broadcast receiver to receive the messages from the wear device via the listenerService.
+    public class MessageReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String message = intent.getStringExtra("message");
+            Log.v(TAG, "Main activity received message: " + message);
+
+            System.out.println(message);
+        }
+    }
+
+    // Connect to the data layer when the Activity starts
+    @Override
+    protected void onStart() {
+        super.onStart();
+        googleClient.connect();
+    }
+
+    // Send a message when the data layer connection is successful.
+    @Override
+    public void onConnected(Bundle bundle) {
+        System.out.println("successfully connected - mobile");
+    }
+
+    // Disconnect from the data layer when the Activity stops
+    @Override
+    protected void onStop() {
+        if (null != googleClient && googleClient.isConnected()) {
+            googleClient.disconnect();
+        }
+        super.onStop();
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+        System.out.println("Connection suspended - mobile");
+    }
+
+    @Override
+    public void onConnectionFailed(ConnectionResult connectionResult) {
+        System.out.println("Connection failed - mobile");
+    }
+
+    //This actually sends the message to the wearable device.
+    class SendThread extends Thread {
+        String path;
+        String message;
+
+        //constructor
+        SendThread(String p, String msg) {
+            path = p;
+            message = msg;
+        }
+
+        public void run() {
+            NodeApi.GetConnectedNodesResult nodes = Wearable.NodeApi.getConnectedNodes(googleClient).await();
+            for (Node node : nodes.getNodes()) {
+                MessageApi.SendMessageResult result = Wearable.MessageApi.sendMessage(googleClient, node.getId(), path, message.getBytes()).await();
+                if (result.getStatus().isSuccess()) {
+                    Log.v(TAG, "SendThread: message send to "+ node.getDisplayName());
+
+                } else {
+                    // Log an error
+                    Log.v(TAG, "SendThread: message failed to" + node.getDisplayName());
+                }
+            }
         }
     }
 }

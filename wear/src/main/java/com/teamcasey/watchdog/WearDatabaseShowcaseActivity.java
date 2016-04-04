@@ -1,19 +1,38 @@
 package com.teamcasey.watchdog;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.ContentValues;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.wearable.MessageApi;
+import com.google.android.gms.wearable.Node;
+import com.google.android.gms.wearable.NodeApi;
+import com.google.android.gms.wearable.Wearable;
 
 /**
  * Created by seth on 3/6/16.
  */
-public class WearDatabaseShowcaseActivity extends Activity {
+public class WearDatabaseShowcaseActivity extends Activity implements
+        GoogleApiClient.ConnectionCallbacks,
+        GoogleApiClient.OnConnectionFailedListener {
     final public WearDatabaseHelper database = new WearDatabaseHelper(this);
+    GoogleApiClient googleClient;
+    private final static String TAG = "Wear MainActivity";
+    boolean connected = false;
+    String datapath = "/message_path";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -21,6 +40,7 @@ public class WearDatabaseShowcaseActivity extends Activity {
 
         setContentView(R.layout.wear_database_layout);
         setupButtonListeners();
+        setupMessaging();
     }
 
     //Getter such that the async tasks can get the database
@@ -49,6 +69,7 @@ public class WearDatabaseShowcaseActivity extends Activity {
         listButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 new GetHeartRateRows().execute();
+                new SendThread(datapath, "hello mobile device - from wear").start();
             }
         });
     }
@@ -170,6 +191,82 @@ public class WearDatabaseShowcaseActivity extends Activity {
         @Override
         protected void onPostExecute(Cursor returnedRows) {
             WearDatabaseShowcaseActivity.this.logCurrentTableStructure(returnedRows);
+        }
+    }
+
+    private void setupMessaging() {
+        // Register the local broadcast receiver to receive messages from the listener.
+        IntentFilter messageFilter = new IntentFilter(Intent.ACTION_SEND);
+        MessageReceiver messageReceiver = new MessageReceiver();
+        LocalBroadcastManager.getInstance(this).registerReceiver(messageReceiver, messageFilter);
+
+        // Build a new GoogleApiClient that includes the Wearable API
+        googleClient = new GoogleApiClient.Builder(this)
+                .addApi(Wearable.API)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .build();
+    }
+
+    public class MessageReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String message = intent.getStringExtra("message");
+            Log.v(TAG, "Main activity received message: " + message);
+
+            new SendThread(datapath, "hello phone device").start();
+        }
+    }
+
+    // Connect to the data layer when the Activity starts
+    @Override
+    protected void onStart() {
+        super.onStart();
+        googleClient.connect();
+    }
+
+
+    //needed to send a message back to the device.  hopefully.
+    @Override
+    public void onConnected(Bundle bundle) {
+        connected = true;
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+        connected = false;
+    }
+
+    @Override
+    public void onConnectionFailed(ConnectionResult connectionResult) {
+        connected = false;
+    }
+
+    //This actually sends the message to the wearable device.
+    class SendThread extends Thread {
+        String path;
+        String message;
+
+        //constructor
+        SendThread(String p, String msg) {
+            path = p;
+            message = msg;
+        }
+
+        //sends the message via the thread.  this will send to all wearables connected, but
+        //since there is (should only?) be one, so no problem.
+        public void run() {
+            NodeApi.GetConnectedNodesResult nodes = Wearable.NodeApi.getConnectedNodes(googleClient).await();
+            for (Node node : nodes.getNodes()) {
+                MessageApi.SendMessageResult result = Wearable.MessageApi.sendMessage(googleClient, node.getId(), path, message.getBytes()).await();
+                if (result.getStatus().isSuccess()) {
+                    Log.v(TAG, "SendThread: message send to "+ node.getDisplayName());
+
+                } else {
+                    // Log an error
+                    Log.v(TAG, "SendThread: message failed to" + node.getDisplayName());
+                }
+            }
         }
     }
 }
