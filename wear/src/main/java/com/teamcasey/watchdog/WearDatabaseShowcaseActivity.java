@@ -14,6 +14,7 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -52,6 +53,7 @@ public class WearDatabaseShowcaseActivity extends Activity implements
         final Button addButton = (Button) findViewById(R.id.addrowbtn);
         final Button deleteButton = (Button) findViewById(R.id.deleterowbtn);
         final Button listButton = (Button) findViewById(R.id.listrowbtn);
+        final Button menuButton = (Button) findViewById(R.id.menuviewbtn);
 
 
         addButton.setOnClickListener(new View.OnClickListener() {
@@ -72,6 +74,18 @@ public class WearDatabaseShowcaseActivity extends Activity implements
                 new SendThread(datapath, "hello mobile device - from wear").start();
             }
         });
+
+        menuButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                openMainMenu();
+            }
+        });
+
+    }
+
+    private void openMainMenu() {
+        Intent intent = new Intent(this, MainMenuActivity.class);
+        startActivity(intent);
     }
 
     /**
@@ -213,6 +227,7 @@ public class WearDatabaseShowcaseActivity extends Activity implements
         public void onReceive(Context context, Intent intent) {
             String message = intent.getStringExtra("message");
             Log.v(TAG, "Main activity received message: " + message);
+            makeToast(message);
 
             new SendThread(datapath, "hello phone device").start();
         }
@@ -268,5 +283,13 @@ public class WearDatabaseShowcaseActivity extends Activity implements
                 }
             }
         }
+    }
+
+    private void makeToast(String message) {
+        Context context = getApplicationContext();
+        int duration = Toast.LENGTH_SHORT;
+
+        Toast toast = Toast.makeText(context, message, duration);
+        toast.show();
     }
 }

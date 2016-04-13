@@ -16,6 +16,7 @@ import android.widget.Button;
 import android.os.Handler;
 import android.os.Message;
 import android.content.IntentFilter;
+import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -213,6 +214,7 @@ public class DatabaseShowcaseActivity extends Activity implements GoogleApiClien
             public boolean handleMessage(Message msg) {
                 Bundle stuff = msg.getData();
                 System.out.println(stuff.getString("logthis"));
+                makeToast(stuff.getString("logthis"));
                 return true;
             }
         });
@@ -230,6 +232,7 @@ public class DatabaseShowcaseActivity extends Activity implements GoogleApiClien
             Log.v(TAG, "Main activity received message: " + message);
 
             System.out.println(message);
+            makeToast(message);
         }
     }
 
@@ -289,5 +292,14 @@ public class DatabaseShowcaseActivity extends Activity implements GoogleApiClien
                 }
             }
         }
+    }
+
+    private void makeToast(String message) {
+        Context context = getApplicationContext();
+        CharSequence text = "Hello toast!";
+        int duration = Toast.LENGTH_SHORT;
+
+        Toast toast = Toast.makeText(context, message, duration);
+        toast.show();
     }
 }
