@@ -5,9 +5,14 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 /**
- * Created by seth on 3/6/16.
+ * A class for creating a database on the watch if one doesn't exist.
+ *
+ * Use getInstance() to get the singleton object across all watch activities
+ * NEVER USE new WearDatabaseHelper. ALWAYS use getInstance()
  */
 public class WearDatabaseHelper extends SQLiteOpenHelper {
+    private static WearDatabaseHelper dbHelperInstance;
+
     public static abstract class HeartRateTableConstants {
         public static final String TABLE_NAME = "HeartRate";
         public static final String KEY_ID = "id";
@@ -41,4 +46,12 @@ public class WearDatabaseHelper extends SQLiteOpenHelper {
         db.execSQL(sqlString);
         onCreate(db);
     };
+
+    //Singleton pattern, always use this method to get an instance of the DB anywhere in the app
+    public static synchronized WearDatabaseHelper getInstance(Context context) {
+        if (dbHelperInstance == null) {
+            dbHelperInstance = new WearDatabaseHelper(context.getApplicationContext());
+        }
+        return dbHelperInstance;
+    }
 }

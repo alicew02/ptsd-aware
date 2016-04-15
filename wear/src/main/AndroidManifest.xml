@@ -11,19 +11,16 @@
         android:icon="@drawable/hp_dog"
         android:label="@string/app_name"
         android:theme="@android:style/Theme.DeviceDefault" >
+
         <activity
-            android:name=".WearDatabaseShowcaseActivity"
+            android:name=".ConstantHeartRateActivity"
             android:label="@string/app_name" >
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-
-        <activity
-            android:name=".MainMenuActivity"
-            android:label="@string/app_name" >
         </activity>
 
         <service android:name=".ListenerService">
