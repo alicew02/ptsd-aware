@@ -83,15 +83,12 @@ public class WatchdogWatchFace extends CanvasWatchFaceService {
             mTouchCoordinateX = 0;
             mTouchCoordinateX = 0;
             mCurrentHeartRate = "0";
-
-            setupHeartRateMonitoring();
         }
 
         private void setupHeartRateMonitoring() {
             this.mSensorManager = ((SensorManager) getSystemService(SENSOR_SERVICE));
             this.mHeartRateSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_HEART_RATE);
 
-            //listen for heart rate changes at a rate of 3
             this.mSensorManager.registerListener(this, this.mHeartRateSensor, 1);
         }
 
@@ -212,6 +209,13 @@ public class WatchdogWatchFace extends CanvasWatchFaceService {
         @Override
         public void onAccuracyChanged(Sensor sensor, int accuracy) {
             // Filler
+        }
+
+        @Override
+        public void onVisibilityChanged(boolean visible) {
+            super.onVisibilityChanged(visible);
+
+            setupHeartRateMonitoring();
         }
     }
 }
