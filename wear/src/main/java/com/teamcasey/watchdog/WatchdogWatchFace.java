@@ -1,27 +1,27 @@
 package com.teamcasey.watchdog;
 
+import android.content.ContentValues;
 import android.content.res.Resources;
+import android.database.Cursor;
+import android.database.DatabaseUtils;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Vibrator;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
-import android.text.format.DateUtils;
-import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.WindowInsets;
-
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Locale;
 
 public class WatchdogWatchFace extends CanvasWatchFaceService {
     private static final String TAG = "watchdog_watch_face";
@@ -36,35 +36,44 @@ public class WatchdogWatchFace extends CanvasWatchFaceService {
         return new Engine();
     }
 
-    private class Engine extends CanvasWatchFaceService.Engine implements SensorEventListener {
-        private Paint mTextPaint;
-        private final Paint mPeekCardBackgroundPaint = new Paint();
+    protected class Engine extends CanvasWatchFaceService.Engine implements SensorEventListener {
+        //fields for drawing
+        //copy-pasted from example, don't touch unless you understand what you're doing
+        private Paint textPaintForDrawing;
+        private final Paint peekCardBackgroundPaintForDrawing = new Paint();
+        private float xOffsetForDrawing;
+        private float yOffsetForDrawing;
+        private float textSpacingHeightForDrawing;
+        private int screenTextColorForDrawing = Color.WHITE;
+        private final Rect cardBounds = new Rect();
+        private boolean lowBitAmbientForDrawing;
 
-        private float mXOffset;
-        private float mYOffset;
-        private float mTextSpacingHeight;
-        private int mScreenTextColor = Color.WHITE;
+        //fields for sensors
+        private Sensor heartRateSensor;
+        private SensorManager sensorManager;
 
-        private int mTouchCoordinateX;
-        private int mTouchCoordinateY;
-        private String mCurrentHeartRate;
+        //fields for handling touchdown events
+        private int currentTouchCoordinateX;
+        private int currentTouchCoordinateY;
 
-        private Sensor mHeartRateSensor;
-        private SensorManager mSensorManager;
+        //fields for heartrate
+        private static final int numberOfRecordsForBaseline = 5000;
+        private int baselineHeartRate;
+        private int currentHeartRate;
+        private Long currentRowCount;
+        private int recordsUntilPrompt;
 
-        private final Rect mCardBounds = new Rect();
 
         /**
-         * Whether the display supports fewer bits for each color in ambient mode. When true, we
-         * disable anti-aliasing in ambient mode.
+         * Lifecycle method that gets called when the watch face is created
+         *
+         * @param holder -> previous data
          */
-        private boolean mLowBitAmbient;
-
         @Override
         public void onCreate(SurfaceHolder holder) {
             super.onCreate(holder);
 
-            /** Accepts tap events via WatchFaceStyle (setAcceptsTapEvents(true)). */
+            // Accepts tap events via WatchFaceStyle (setAcceptsTapEvents(true)).
             setWatchFaceStyle(new WatchFaceStyle.Builder(WatchdogWatchFace.this)
                     .setCardPeekMode(WatchFaceStyle.PEEK_MODE_VARIABLE)
                     .setBackgroundVisibility(WatchFaceStyle.BACKGROUND_VISIBILITY_INTERRUPTIVE)
@@ -72,27 +81,37 @@ public class WatchdogWatchFace extends CanvasWatchFaceService {
                     .setAcceptsTapEvents(true)
                     .build());
 
+            setupFieldsForDrawingAndTouchingAndHeartRate();
+        }
+
+        /**
+         * Called from onCreate(), initial field setup
+         */
+        private void setupFieldsForDrawingAndTouchingAndHeartRate() {
             Resources resources = WatchdogWatchFace.this.getResources();
-            mTextSpacingHeight = resources.getDimension(R.dimen.interactive_text_size);
+            textSpacingHeightForDrawing = resources.getDimension(R.dimen.interactive_text_size);
 
-            mTextPaint = new Paint();
-            mTextPaint.setColor(mScreenTextColor);
-            mTextPaint.setTypeface(BOLD_TYPEFACE);
-            mTextPaint.setAntiAlias(true);
+            textPaintForDrawing = new Paint();
+            textPaintForDrawing.setColor(screenTextColorForDrawing);
+            textPaintForDrawing.setTypeface(BOLD_TYPEFACE);
+            textPaintForDrawing.setAntiAlias(true);
 
-            mTouchCoordinateX = 0;
-            mTouchCoordinateX = 0;
-            mCurrentHeartRate = "0";
+            currentTouchCoordinateX = 0;
+            currentTouchCoordinateX = 0;
+            currentHeartRate = 0;
+            recordsUntilPrompt = 0;
+
+            //get the current # of heart rate entries, will calculate baseline if necessary
+            this.currentRowCount = new Long(0);
+            new CountHeartRateRows().execute();
         }
 
-        private void setupHeartRateMonitoring() {
-            this.mSensorManager = ((SensorManager) getSystemService(SENSOR_SERVICE));
-            this.mHeartRateSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_HEART_RATE);
-
-            this.mSensorManager.registerListener(this, this.mHeartRateSensor, 1);
-        }
-
-
+        /**
+         * Lifecycle method for dynamically resizing based on insets
+         * From example code, didn't write this
+         *
+         * @param insets
+         */
         @Override
         public void onApplyWindowInsets(WindowInsets insets) {
             super.onApplyWindowInsets(insets);
@@ -100,55 +119,73 @@ public class WatchdogWatchFace extends CanvasWatchFaceService {
             /** Loads offsets / text size based on device type (square vs. round). */
             Resources resources = WatchdogWatchFace.this.getResources();
             boolean isRound = insets.isRound();
-            mXOffset = resources.getDimension(
+            xOffsetForDrawing = resources.getDimension(
                     isRound ? R.dimen.interactive_x_offset_round : R.dimen.interactive_x_offset);
-            mYOffset = resources.getDimension(
+            yOffsetForDrawing = resources.getDimension(
                     isRound ? R.dimen.interactive_y_offset_round : R.dimen.interactive_y_offset);
 
             float textSize = resources.getDimension(
                     isRound ? R.dimen.interactive_text_size_round : R.dimen.interactive_text_size);
 
-            mTextPaint.setTextSize(textSize);
+            textPaintForDrawing.setTextSize(textSize);
         }
 
+        /**
+         * Lifecycle method for dealing with notifications
+         * Fromm example code, didn't write this
+         *
+         * @param bounds
+         */
         @Override
         public void onPeekCardPositionUpdate(Rect bounds) {
             super.onPeekCardPositionUpdate(bounds);
 
-            if (!bounds.equals(mCardBounds)) {
-                mCardBounds.set(bounds);
+            if (!bounds.equals(cardBounds)) {
+                cardBounds.set(bounds);
                 invalidate();
             }
         }
 
+        /**
+         * Lifecycle method for screen props changing
+         * From example code, didn't write this
+         *
+         * @param properties
+         */
         @Override
         public void onPropertiesChanged(Bundle properties) {
             super.onPropertiesChanged(properties);
 
             boolean burnInProtection = properties.getBoolean(PROPERTY_BURN_IN_PROTECTION, false);
-            mTextPaint.setTypeface(burnInProtection ? NORMAL_TYPEFACE : BOLD_TYPEFACE);
+            textPaintForDrawing.setTypeface(burnInProtection ? NORMAL_TYPEFACE : BOLD_TYPEFACE);
 
-            mLowBitAmbient = properties.getBoolean(PROPERTY_LOW_BIT_AMBIENT, false);
+            lowBitAmbientForDrawing = properties.getBoolean(PROPERTY_LOW_BIT_AMBIENT, false);
         }
 
+        /**
+         * Lifecycle method for dealing with low ambient mode
+         * From example code, didn't write this
+         *
+         * @param inAmbientMode
+         */
         @Override
         public void onAmbientModeChanged(boolean inAmbientMode) {
             super.onAmbientModeChanged(inAmbientMode);
 
-            if (mLowBitAmbient) {
+            if (lowBitAmbientForDrawing) {
                 boolean antiAlias = !inAmbientMode;
-                mTextPaint.setAntiAlias(antiAlias);
+                textPaintForDrawing.setAntiAlias(antiAlias);
             }
             invalidate();
         }
 
         /*
-         * Captures tap event (and tap type) and increments correct tap type total.
+         * Captures tap event, type and screen location
          */
         @Override
         public void onTapCommand(int tapType, int x, int y, long eventTime) {
-            mTouchCoordinateX = x;
-            mTouchCoordinateY = y;
+            currentTouchCoordinateX = x;
+            currentTouchCoordinateY = y;
 
             switch(tapType) {
                 case TAP_TYPE_TOUCH:
@@ -162,60 +199,277 @@ public class WatchdogWatchFace extends CanvasWatchFaceService {
             invalidate();
         }
 
-        @Override
-        public void onDraw(Canvas canvas, Rect bounds) {
-            /** Draws background */
-            canvas.drawColor(Color.BLACK);
-
-            canvas.drawText(
-                    "HR: " + mCurrentHeartRate,
-                    mXOffset,
-                    mYOffset + (mTextSpacingHeight),
-                    mTextPaint);
-
-            canvas.drawText(
-                    "X, Y: " + mTouchCoordinateX + ", " + mTouchCoordinateY,
-                    mXOffset,
-                    mYOffset + (mTextSpacingHeight * 2),
-                    mTextPaint
-            );
-
-            /** Covers area under peek card */
-            if (isInAmbientMode()) {
-                canvas.drawRect(mCardBounds, mPeekCardBackgroundPaint);
-            }
-        }
-
+        /**
+         * System call that auto runs every time a new minute ticks internally
+         * Forces a screen redraw so time can update
+         * Every five minute updates rowcount which may also update baseline
+         */
         @Override
         public void onTimeTick() {
             super.onTimeTick();
+
+            if (AndroidSystemHelper.isCurrentTimeDivisibleByFive()) {
+                new CountHeartRateRows().execute();
+            }
+
             invalidate();
         }
 
         /**
-         * Whenever the heart rate monitor changes and the user isn't being prompted to relax
-         * store the data in the database and change the rate textview
+         * Runs whenever invalidate() is called, redraws the watch face appropriately
+         *
+         * @param canvas -> canvas object on which to draw
+         * @param bounds -> bounds of the canvas depending on square/round watchface
+         */
+        @Override
+        public void onDraw(Canvas canvas, Rect bounds) {
+            Resources resources = WatchdogWatchFace.this.getResources();
+
+            //set background color
+            canvas.drawColor(Color.BLACK);
+
+            Drawable heart = resources.getDrawable(R.drawable.heart, null);
+            int height = heart.getMinimumHeight()+25;
+            int width = heart.getMinimumWidth()+41;
+            int left = (int) xOffsetForDrawing-21;
+            int right = (int) xOffsetForDrawing + width;
+            int top = (int) yOffsetForDrawing-25;
+            int bottom = (int) yOffsetForDrawing + height;
+
+            heart.setBounds(new Rect(left, top, right, bottom));
+            heart.draw(canvas);
+
+
+            if (this.hasEnoughRowsForBaseline()) {
+                canvas.drawText(
+                        "HR: " + currentHeartRate,
+                        xOffsetForDrawing,
+                        yOffsetForDrawing + (textSpacingHeightForDrawing * 2),
+                        textPaintForDrawing);
+            } else {
+                Long recordsToCalibrated = Engine.numberOfRecordsForBaseline - this.currentRowCount;
+
+                canvas.drawText(
+                        recordsToCalibrated + " left",
+                        xOffsetForDrawing,
+                        yOffsetForDrawing + (textSpacingHeightForDrawing * 2),
+                        textPaintForDrawing);
+            }
+
+            /**
+            canvas.drawText(
+                    "X, Y: " + currentTouchCoordinateX + ", " + currentTouchCoordinateY,
+                    xOffsetForDrawing,
+                    yOffsetForDrawing + (textSpacingHeightForDrawing * 2),
+                    textPaintForDrawing
+            );
+
+            if (this.hasEnoughRowsForBaseline()) {
+                canvas.drawText(
+                        "Baseline: " + this.baselineHeartRate,
+                        xOffsetForDrawing,
+                        yOffsetForDrawing + (textSpacingHeightForDrawing * 3),
+                        textPaintForDrawing
+                );
+            } else {
+                canvas.drawText(
+                        "Rows: " + this.currentRowCount,
+                        xOffsetForDrawing,
+                        yOffsetForDrawing + (textSpacingHeightForDrawing * 3),
+                        textPaintForDrawing
+                );
+            }
+            */
+
+            /** Covers area under peek card */
+            if (isInAmbientMode()) {
+                canvas.drawRect(cardBounds, peekCardBackgroundPaintForDrawing);
+            }
+        }
+
+        /**
+         * Store the heartrate change and prompt the user to relax if above their baseline
          *
          * @param event from API
          */
         @Override
         public void onSensorChanged(SensorEvent event) {
             if (event.values[0] > 0) {
-                this.mCurrentHeartRate = String.valueOf(event.values[0]);
+                this.currentHeartRate = (int) event.values[0];
+                new InsertHeartRateRow().execute((int) event.values[0]);
+
                 invalidate();
+
+                if (this.hasEnoughRowsForBaseline() && this.currentHeartRate >= this.baselineHeartRate) {
+                    if (this.recordsUntilPrompt == 0) {
+                        this.askUserIfTheyWishToRelax();
+                        this.recordsUntilPrompt = 10;
+                    } else {
+                        this.recordsUntilPrompt--;
+                    }
+                } else {
+                    this.recordsUntilPrompt = 10;
+                }
             }
         }
 
         @Override
         public void onAccuracyChanged(Sensor sensor, int accuracy) {
-            // Filler
+            // Filler, needs to be implemented
         }
 
+        /**
+         * Runs whenever the watch face becomes visible/invisible
+         *
+         * @param visible -> true if visible false otherwise
+         */
         @Override
         public void onVisibilityChanged(boolean visible) {
             super.onVisibilityChanged(visible);
 
-            setupHeartRateMonitoring();
+            if (visible) {
+                setupHeartRateMonitoring();
+            } else {
+                disableHeartRateMonitoring();
+            }
+        }
+
+        /**
+         * Creates the sensors and starts listening for heart rate changes
+         */
+        private void setupHeartRateMonitoring() {
+            this.sensorManager = ((SensorManager) getSystemService(SENSOR_SERVICE));
+            this.heartRateSensor = sensorManager.getDefaultSensor(Sensor.TYPE_HEART_RATE);
+
+            this.sensorManager.registerListener(this, this.heartRateSensor, 1);
+        }
+
+        /**
+         * Shuts the hr sensor off
+         */
+        private void disableHeartRateMonitoring() {
+            this.sensorManager.unregisterListener(this);
+        }
+
+        /**
+         * Creates an alert dialog asking if the user wishes to relax
+         */
+        private void askUserIfTheyWishToRelax() {
+            Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+
+            //param denotes how many ms to vibrate for
+            vibrator.vibrate(1000);
+        }
+
+        /**
+         * Setter for this.currentRowCount
+         * Attempts to update the baseline if enough rows exist (>=5000)
+         *
+         * Should only get called every 5 minutes via Engine.timeTick() system call
+         */
+        private void updateRowCount(Long rowCount) {
+            this.currentRowCount = rowCount;
+            recalculateBaselineIfNecessary();
+        }
+
+        /**
+         * Setter for this.baselineHeartRate
+         */
+        private void updateBaselineHeartRate(int baseline) {
+            this.baselineHeartRate = baseline;
+        }
+
+
+        /**
+         * @return true if >= 5000 rows in the database or false otherwise
+         */
+        private boolean hasEnoughRowsForBaseline() {
+            return this.currentRowCount >= Engine.numberOfRecordsForBaseline;
+        }
+
+        /**
+         * Recalculates the baseline heartrate if enough rows exist to do so
+         *
+         * Should only get called every 5 minutes via Engine.timeTick() system call
+         */
+        private void recalculateBaselineIfNecessary() {
+            if (this.hasEnoughRowsForBaseline()) {
+                new CalculateBaselineHeartRate().execute();
+            }
+        }
+
+        /**
+         * Class for inserting heart rate rows via the background thread not during the calibrating period
+         * How to use: Long[] result = new InsertHeartRateRow().execute(10, 20, 30);
+         * Where 10, 20 and 30 above are different heartbeat readings
+         *
+         * @return Long[] -> a list of inserted heart rate row IDs
+         */
+        private class InsertHeartRateRow extends AsyncTask<Integer, Void, Long[]> {
+            @Override
+            protected Long[] doInBackground(Integer... heartRates) {
+                SQLiteDatabase db = WearDatabaseHelper.getInstance(getApplicationContext()).getWritableDatabase();
+                Long[] insertedRowIDs = new Long[heartRates.length];
+                int counter = 0;
+
+                for (Integer heartRate : heartRates) {
+                    ContentValues valuesToInsert = new ContentValues();
+                    valuesToInsert.put(WearDatabaseHelper.HeartRateTableConstants.COL1, heartRate);
+                    valuesToInsert.put(WearDatabaseHelper.HeartRateTableConstants.COL3, 0);
+
+                    Long insertedRowID = db.insert(WearDatabaseHelper.HeartRateTableConstants.TABLE_NAME, null, valuesToInsert);
+
+                    insertedRowIDs[counter] = insertedRowID;
+                    counter++;
+                }
+
+                return insertedRowIDs;
+            }
+        }
+
+        /**
+         * A class for counting how many current heart rate rows are in the database and
+         * passes that number to updateRowCount()
+         *
+         * @return Long -> # of rows in the database
+         */
+        private class CountHeartRateRows extends AsyncTask<Void, Void, Long> {
+            @Override
+            protected Long doInBackground(Void... nothing) {
+                SQLiteDatabase db = WearDatabaseHelper.getInstance(getApplicationContext()).getReadableDatabase();
+
+                return DatabaseUtils.queryNumEntries(db, WearDatabaseHelper.HeartRateTableConstants.TABLE_NAME);
+            }
+
+            @Override
+            protected void onPostExecute(Long rowCount) {
+                WatchdogWatchFace.Engine.this.updateRowCount(rowCount);
+            }
+        }
+
+        /**
+         * Calculate the average heart rate using sql and passes it to updateBaselineHeartRate
+         *
+         * @return int -> the baseline heartrate
+         */
+        private class CalculateBaselineHeartRate extends AsyncTask<Void, Void, Integer> {
+            @Override
+            protected Integer doInBackground(Void... nothing) {
+                SQLiteDatabase db = WearDatabaseHelper.getInstance(getApplicationContext()).getReadableDatabase();
+
+                Cursor result = db.rawQuery("SELECT AVG(" + WearDatabaseHelper.HeartRateTableConstants.COL1 + ") from " + WearDatabaseHelper.HeartRateTableConstants.TABLE_NAME, null);
+
+                if (result.moveToFirst()) {
+                    return result.getInt(0);
+                } else {
+                    return 0;
+                }
+            }
+
+            @Override
+            protected void onPostExecute(Integer baseline) {
+                WatchdogWatchFace.Engine.this.updateBaselineHeartRate(baseline);
+            }
         }
     }
 }
