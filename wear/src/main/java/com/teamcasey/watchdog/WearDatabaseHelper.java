@@ -1,8 +1,10 @@
 package com.teamcasey.watchdog;
 
 import android.content.Context;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.os.AsyncTask;
 
 /**
  * A class for creating a database on the watch if one doesn't exist.
