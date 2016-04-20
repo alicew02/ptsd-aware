@@ -19,6 +19,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Vibrator;
 import android.support.wearable.watchface.CanvasWatchFaceService;
+import android.support.wearable.watchface.WatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
 import android.view.SurfaceHolder;
 import android.view.WindowInsets;
@@ -47,14 +48,12 @@ public class WatchdogWatchFace extends CanvasWatchFaceService {
         private int screenTextColorForDrawing = Color.WHITE;
         private final Rect cardBounds = new Rect();
         private boolean lowBitAmbientForDrawing;
+        private Drawable heartIconForDrawing;
+        private Drawable offHeartIconForDrawing;
 
         //fields for sensors
         private Sensor heartRateSensor;
         private SensorManager sensorManager;
-
-        //fields for handling touchdown events
-        private int currentTouchCoordinateX;
-        private int currentTouchCoordinateY;
 
         //fields for heartrate
         private static final int numberOfRecordsForBaseline = 5000;
@@ -62,6 +61,7 @@ public class WatchdogWatchFace extends CanvasWatchFaceService {
         private int currentHeartRate;
         private Long currentRowCount;
         private int recordsUntilPrompt;
+        private boolean currentlyMonitoringHeartRate = false;
 
 
         /**
@@ -89,6 +89,7 @@ public class WatchdogWatchFace extends CanvasWatchFaceService {
          */
         private void setupFieldsForDrawingAndTouchingAndHeartRate() {
             Resources resources = WatchdogWatchFace.this.getResources();
+
             textSpacingHeightForDrawing = resources.getDimension(R.dimen.interactive_text_size);
 
             textPaintForDrawing = new Paint();
@@ -96,8 +97,6 @@ public class WatchdogWatchFace extends CanvasWatchFaceService {
             textPaintForDrawing.setTypeface(BOLD_TYPEFACE);
             textPaintForDrawing.setAntiAlias(true);
 
-            currentTouchCoordinateX = 0;
-            currentTouchCoordinateX = 0;
             currentHeartRate = 0;
             recordsUntilPrompt = 0;
 
@@ -128,6 +127,17 @@ public class WatchdogWatchFace extends CanvasWatchFaceService {
                     isRound ? R.dimen.interactive_text_size_round : R.dimen.interactive_text_size);
 
             textPaintForDrawing.setTextSize(textSize);
+
+            heartIconForDrawing = resources.getDrawable(R.drawable.heart, null);
+            offHeartIconForDrawing = resources.getDrawable(R.drawable.off_heart, null);
+            int height = heartIconForDrawing.getMinimumHeight()+25;
+            int width = heartIconForDrawing.getMinimumWidth()+41;
+            int left = (int) xOffsetForDrawing-21;
+            int right = (int) xOffsetForDrawing + width;
+            int top = (int) yOffsetForDrawing-25;
+            int bottom = (int) yOffsetForDrawing + height;
+            heartIconForDrawing.setBounds(new Rect(left, top, right, bottom));
+            offHeartIconForDrawing.setBounds(new Rect(left, top, right, bottom));
         }
 
         /**
@@ -184,19 +194,24 @@ public class WatchdogWatchFace extends CanvasWatchFaceService {
          */
         @Override
         public void onTapCommand(int tapType, int x, int y, long eventTime) {
-            currentTouchCoordinateX = x;
-            currentTouchCoordinateY = y;
+            switch (tapType) {
+                //Up event
+                case WatchFaceService.TAP_TYPE_TAP:
+                    break;
 
-            switch(tapType) {
-                case TAP_TYPE_TOUCH:
-                    break;
-                case TAP_TYPE_TOUCH_CANCEL:
-                    break;
-                case TAP_TYPE_TAP:
+                //Down event
+                case WatchFaceService.TAP_TYPE_TOUCH:
+                    if (heartIconForDrawing.getBounds().contains(x, y)) {
+                        if (this.currentlyMonitoringHeartRate) {
+                            this.disableHeartRateMonitoring();
+                        } else {
+                            this.setupHeartRateMonitoring();
+                        }
+
+                        invalidate();
+                    }
                     break;
             }
-
-            invalidate();
         }
 
         /**
@@ -223,63 +238,36 @@ public class WatchdogWatchFace extends CanvasWatchFaceService {
          */
         @Override
         public void onDraw(Canvas canvas, Rect bounds) {
-            Resources resources = WatchdogWatchFace.this.getResources();
-
             //set background color
             canvas.drawColor(Color.BLACK);
 
-            Drawable heart = resources.getDrawable(R.drawable.heart, null);
-            int height = heart.getMinimumHeight()+25;
-            int width = heart.getMinimumWidth()+41;
-            int left = (int) xOffsetForDrawing-21;
-            int right = (int) xOffsetForDrawing + width;
-            int top = (int) yOffsetForDrawing-25;
-            int bottom = (int) yOffsetForDrawing + height;
+            if (this.currentlyMonitoringHeartRate) {
+                this.heartIconForDrawing.draw(canvas);
 
-            heart.setBounds(new Rect(left, top, right, bottom));
-            heart.draw(canvas);
+                if (this.hasEnoughRowsForBaseline()) {
+                    canvas.drawText(
+                            "HR: " + currentHeartRate,
+                            xOffsetForDrawing,
+                            yOffsetForDrawing + (textSpacingHeightForDrawing * 2),
+                            textPaintForDrawing);
+                } else {
+                    Long recordsToCalibrated = Engine.numberOfRecordsForBaseline - this.currentRowCount;
 
-
-            if (this.hasEnoughRowsForBaseline()) {
-                canvas.drawText(
-                        "HR: " + currentHeartRate,
-                        xOffsetForDrawing,
-                        yOffsetForDrawing + (textSpacingHeightForDrawing * 2),
-                        textPaintForDrawing);
+                    canvas.drawText(
+                            recordsToCalibrated + " left",
+                            xOffsetForDrawing,
+                            yOffsetForDrawing + (textSpacingHeightForDrawing * 2),
+                            textPaintForDrawing);
+                }
             } else {
-                Long recordsToCalibrated = Engine.numberOfRecordsForBaseline - this.currentRowCount;
+                this.offHeartIconForDrawing.draw(canvas);
 
                 canvas.drawText(
-                        recordsToCalibrated + " left",
+                        "  Touch",
                         xOffsetForDrawing,
                         yOffsetForDrawing + (textSpacingHeightForDrawing * 2),
                         textPaintForDrawing);
             }
-
-            /**
-            canvas.drawText(
-                    "X, Y: " + currentTouchCoordinateX + ", " + currentTouchCoordinateY,
-                    xOffsetForDrawing,
-                    yOffsetForDrawing + (textSpacingHeightForDrawing * 2),
-                    textPaintForDrawing
-            );
-
-            if (this.hasEnoughRowsForBaseline()) {
-                canvas.drawText(
-                        "Baseline: " + this.baselineHeartRate,
-                        xOffsetForDrawing,
-                        yOffsetForDrawing + (textSpacingHeightForDrawing * 3),
-                        textPaintForDrawing
-                );
-            } else {
-                canvas.drawText(
-                        "Rows: " + this.currentRowCount,
-                        xOffsetForDrawing,
-                        yOffsetForDrawing + (textSpacingHeightForDrawing * 3),
-                        textPaintForDrawing
-                );
-            }
-            */
 
             /** Covers area under peek card */
             if (isInAmbientMode()) {
@@ -300,7 +288,7 @@ public class WatchdogWatchFace extends CanvasWatchFaceService {
 
                 invalidate();
 
-                if (this.hasEnoughRowsForBaseline() && this.currentHeartRate >= this.baselineHeartRate) {
+                if (userIsAboveHeartRateThreshold()) {
                     if (this.recordsUntilPrompt == 0) {
                         this.askUserIfTheyWishToRelax();
                         this.recordsUntilPrompt = 10;
@@ -310,6 +298,18 @@ public class WatchdogWatchFace extends CanvasWatchFaceService {
                 } else {
                     this.recordsUntilPrompt = 10;
                 }
+            }
+        }
+
+        /**
+         * Returns whether or not the user is above their heartrate threshold
+         * Calculates the heartrate threshold to be 144% of the baseline
+         */
+        private boolean userIsAboveHeartRateThreshold() {
+            if (this.hasEnoughRowsForBaseline()) {
+                return (this.currentHeartRate >= ((float)this.baselineHeartRate * 1.44));
+            } else {
+                return false;
             }
         }
 
@@ -340,8 +340,8 @@ public class WatchdogWatchFace extends CanvasWatchFaceService {
         private void setupHeartRateMonitoring() {
             this.sensorManager = ((SensorManager) getSystemService(SENSOR_SERVICE));
             this.heartRateSensor = sensorManager.getDefaultSensor(Sensor.TYPE_HEART_RATE);
-
             this.sensorManager.registerListener(this, this.heartRateSensor, 1);
+            this.currentlyMonitoringHeartRate = true;
         }
 
         /**
@@ -349,6 +349,7 @@ public class WatchdogWatchFace extends CanvasWatchFaceService {
          */
         private void disableHeartRateMonitoring() {
             this.sensorManager.unregisterListener(this);
+            this.currentlyMonitoringHeartRate = false;
         }
 
         /**
