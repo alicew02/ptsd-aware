@@ -15,27 +15,23 @@ import android.hardware.SensorManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Message;
+import android.os.Vibrator;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.wearable.view.WatchViewStub;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 /**
  * The main screen that displays when launching the application. Will display heart rate,
  * communicate with google apis, and notify user if they want to relax
  */
-public class ConstantHeartRateActivity extends Activity implements SensorEventListener {
+public class ConstantHeartRateActivity extends Activity {
     private static final String TAG = ConstantHeartRateActivity.class.getName();
-    private static final int maxRate = 80;
-
-    private TextView rate;
-    private Button deleteRowsButton;
-    private Button listRowsButton;
-    private Sensor mHeartRateSensor;
-    private SensorManager mSensorManager;
-    private boolean inDistraction = false;
+    private ImageButton logoButton;
+    String datapath = "/message_path";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,13 +44,11 @@ public class ConstantHeartRateActivity extends Activity implements SensorEventLi
         stub.setOnLayoutInflatedListener(new WatchViewStub.OnLayoutInflatedListener() {
             @Override
             public void onLayoutInflated(WatchViewStub stub) {
-                rate = (TextView) stub.findViewById(R.id.rate);
-                deleteRowsButton = (Button) stub.findViewById(R.id.deleterowbtn);
-                listRowsButton = (Button) stub.findViewById(R.id.listrowbtn);
+                //get the UI elements here
 
+                logoButton = (ImageButton) findViewById(R.id.logoButton);
                 //we need to wait for the view to be populated before we can do this
                 //aka we need to do this in this handler instead of in onStart()
-                setupSensors();
                 setupButtonListeners();
                 setupMessageListener();
             }
@@ -67,34 +61,17 @@ public class ConstantHeartRateActivity extends Activity implements SensorEventLi
 
         //start the connection to the google server
         GoogleConnection.getInstance(getApplicationContext()).connect();
+        launchDialogChooser();
     }
 
-    /*
-     * Creates the sensor manager and heart sensor and begins tracking heart rate
-     */
-    private void setupSensors() {
-        this.mSensorManager = ((SensorManager) getSystemService(SENSOR_SERVICE));
-        this.mHeartRateSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_HEART_RATE);
-
-        //listen for heart rate changes at a rate of 3
-        this.mSensorManager.registerListener(this, this.mHeartRateSensor, 3);
-    }
 
     /*
      * Listen on the buttons to manipulate the database
-     * TODO delete this eventually
      */
     private void setupButtonListeners() {
-        this.deleteRowsButton.setOnClickListener(new View.OnClickListener() {
+        logoButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                new DeleteHeartRateRow().execute();
-            }
-        });
-
-        this.listRowsButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                new GetHeartRateRows().execute();
-                new MessageSendingThread(TAG, MessageReceiver.heartRateDatabasePath, "hello mobile device - from wear", GoogleConnection.getInstance(getApplicationContext())).start();
+               launchDialogChooser();
             }
         });
     }
@@ -116,64 +93,6 @@ public class ConstantHeartRateActivity extends Activity implements SensorEventLi
             System.out.println(id + " " + bpm + " " + date);
 
             returnedRows.moveToNext();
-        }
-    }
-
-    /**
-     * Class for inserting heart rate rows via the background thread during the calibrating period
-     * How to use: Long[] result = new InsertHeartRateRowInCalibratingPeriod().execute(10, 20, 30);
-     * Where 10, 20 and 30 above are different heartbeat readings
-     *
-     * @return Long[] -> a list of inserted heart rate row IDs
-     */
-    private class InsertHeartRateRowInCalibratingPeriod extends AsyncTask<Integer, Void, Long[]> {
-        @Override
-        protected Long[] doInBackground(Integer... heartRates) {
-            SQLiteDatabase db = WearDatabaseHelper.getInstance(getApplicationContext()).getWritableDatabase();
-            Long[] insertedRowIDs = new Long[heartRates.length];
-            int counter = 0;
-
-            for (Integer heartRate : heartRates) {
-                ContentValues valuesToInsert = new ContentValues();
-                valuesToInsert.put(WearDatabaseHelper.HeartRateTableConstants.COL1, heartRate);
-                valuesToInsert.put(WearDatabaseHelper.HeartRateTableConstants.COL3, 1);
-
-                Long insertedRowID = db.insert(WearDatabaseHelper.HeartRateTableConstants.TABLE_NAME, null, valuesToInsert);
-
-                insertedRowIDs[counter] = insertedRowID;
-                counter++;
-            }
-
-            return insertedRowIDs;
-        }
-    }
-
-    /**
-     * Class for inserting heart rate rows via the background thread not during the calibrating period
-     * How to use: Long[] result = new InsertHeartRateRow().execute(10, 20, 30);
-     * Where 10, 20 and 30 above are different heartbeat readings
-     *
-     * @return Long[] -> a list of inserted heart rate row IDs
-     */
-    private class InsertHeartRateRow extends AsyncTask<Integer, Void, Long[]> {
-        @Override
-        protected Long[] doInBackground(Integer... heartRates) {
-            SQLiteDatabase db = WearDatabaseHelper.getInstance(getApplicationContext()).getWritableDatabase();
-            Long[] insertedRowIDs = new Long[heartRates.length];
-            int counter = 0;
-
-            for (Integer heartRate : heartRates) {
-                ContentValues valuesToInsert = new ContentValues();
-                valuesToInsert.put(WearDatabaseHelper.HeartRateTableConstants.COL1, heartRate);
-                valuesToInsert.put(WearDatabaseHelper.HeartRateTableConstants.COL3, 0);
-
-                Long insertedRowID = db.insert(WearDatabaseHelper.HeartRateTableConstants.TABLE_NAME, null, valuesToInsert);
-
-                insertedRowIDs[counter] = insertedRowID;
-                counter++;
-            }
-
-            return insertedRowIDs;
         }
     }
 
@@ -229,34 +148,39 @@ public class ConstantHeartRateActivity extends Activity implements SensorEventLi
     }
 
     /**
-     * Whenever the heart rate monitor changes and the user isn't being prompted to relax
-     * store the data in the database and change the rate textview
-     *
-     * @param event from API
-     */
-    @Override
-    public void onSensorChanged(SensorEvent event) {
-        if (event.values[0] > 0) {
-            if (!this.inDistraction) {
-                this.rate.setText(String.valueOf(event.values[0]));
-                new InsertHeartRateRow().execute((int) event.values[0]);
-            }
-
-            if (this.maxRate < event.values[0]) {
-                askUserIfTheyWishToRelax();
-            }
-        }
-    }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-        // Filler
-    }
-
-    /**
      * Creates an alert dialog asking if the user wishes to relax
      */
-    private void askUserIfTheyWishToRelax() {
+    private void launchDialogChooser() {
+        Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+
+        //param denotes how many ms to vibrate for
+        vibrator.vibrate(5000);
+
+        DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                switch (which){
+                    case DialogInterface.BUTTON_POSITIVE:
+                        Log.d(TAG, "User clicked yes");
+                        dialog.dismiss();
+                        launchOnPhoneOrWatchChooser();
+                        break;
+
+                    case DialogInterface.BUTTON_NEGATIVE:
+                        Log.d(TAG, "User clicked no");
+                        dialog.dismiss();
+                        killApplication();
+                        break;
+                }
+            }
+        };
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(ConstantHeartRateActivity.this);
+        builder.setMessage("Engage in a distraction?").setPositiveButton("Yes", dialogClickListener)
+                .setNegativeButton("No", dialogClickListener).show();
+    }
+
+    private void launchOnPhoneOrWatchChooser() {
         DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
@@ -269,16 +193,16 @@ public class ConstantHeartRateActivity extends Activity implements SensorEventLi
 
                     case DialogInterface.BUTTON_NEGATIVE:
                         Log.d(TAG, "User clicked no");
-                        inDistraction = false;
                         dialog.dismiss();
+                        new MessageSendingThread(TAG, datapath, "Start phone app", GoogleConnection.getInstance(getApplicationContext())).start();
                         break;
                 }
             }
         };
 
         AlertDialog.Builder builder = new AlertDialog.Builder(ConstantHeartRateActivity.this);
-        builder.setMessage("Engage in a distraction?").setPositiveButton("Yes", dialogClickListener)
-                .setNegativeButton("No", dialogClickListener).show();
+        builder.setMessage("Launch from phone or watch?").setPositiveButton("Watch", dialogClickListener)
+                .setNegativeButton("Phone", dialogClickListener).show();
     }
 
     /**
@@ -294,10 +218,8 @@ public class ConstantHeartRateActivity extends Activity implements SensorEventLi
         startActivity(chooser);
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-
-        mSensorManager.unregisterListener(this);
+    private void killApplication() {
+        this.finish();
+        System.exit(0);
     }
 }

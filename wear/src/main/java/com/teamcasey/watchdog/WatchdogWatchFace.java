@@ -1,6 +1,7 @@
 package com.teamcasey.watchdog;
 
 import android.content.ContentValues;
+import android.content.Intent;
 import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.DatabaseUtils;
@@ -340,7 +341,7 @@ public class WatchdogWatchFace extends CanvasWatchFaceService {
         private void setupHeartRateMonitoring() {
             this.sensorManager = ((SensorManager) getSystemService(SENSOR_SERVICE));
             this.heartRateSensor = sensorManager.getDefaultSensor(Sensor.TYPE_HEART_RATE);
-            this.sensorManager.registerListener(this, this.heartRateSensor, 1);
+            this.sensorManager.registerListener(this, this.heartRateSensor, 3);
             this.currentlyMonitoringHeartRate = true;
         }
 
@@ -360,6 +361,13 @@ public class WatchdogWatchFace extends CanvasWatchFaceService {
 
             //param denotes how many ms to vibrate for
             vibrator.vibrate(1000);
+
+            launchWatchDogApplication();
+        }
+
+        private void launchWatchDogApplication() {
+            Intent launchIntent = getPackageManager().getLaunchIntentForPackage("com.teamcasey.watchdog");
+            startActivity(launchIntent);
         }
 
         /**
