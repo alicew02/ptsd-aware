@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">WatchDog</string>
+    <string name="title_activity_dashboard">DashboardActivity</string>
+    <string name="dashboard_view_techniques_menu_button_text">View My Techniques</string>
+    <string name="dashboard_start_technique_button_text">Start Relaxing</string>
+    <string name="title_activity_settings">Settings</string>
+
+    <!-- Strings related to Settings are in strings_activity_settings.xml-->
+
 </resources>
