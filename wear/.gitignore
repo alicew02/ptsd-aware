@@ -7,7 +7,6 @@ gradle/wrapper
 #particulars for your machine/config
 build.gradle
 *pro
-AndroidManifest.xml
 *gradle*
 
 # built application files

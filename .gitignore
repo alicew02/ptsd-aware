@@ -6,7 +6,6 @@ gradle/
 gradle/wrapper
 #particulars for your machine/config
 build.gradle
-AndroidManifest.xml
 
 # built application files
 *.apk
