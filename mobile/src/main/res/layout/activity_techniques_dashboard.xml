@@ -9,24 +9,66 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.teamcasey.watchdog.TechniquesDashboardActivity">
 
-    <ImageButton
+    <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/imageButton"
-        android:src="@android:drawable/ic_lock_silent_mode_off"
+        android:text="Select a default activity"
+        android:id="@+id/activityPrompt"
         android:layout_alignParentTop="true"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"
-        android:layout_marginLeft="20dp"
-        android:layout_marginStart="20dp" />
+        android:layout_centerHorizontal="true" />
 
-    <ImageButton
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/imageButton2"
-        android:src="@android:drawable/ic_lock_silent_mode_off"
-        android:layout_toRightOf="@+id/imageButton"
-        android:layout_alignTop="@+id/imageButton"
-        android:layout_marginLeft="120dp"
-        android:layout_marginStart="120dp"/>
+    <RadioGroup
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@+id/activityPrompt"
+        android:layout_centerHorizontal="true"
+        android:orientation="vertical"
+        android:id="@+id/techniquesRadioGroup"
+        android:weightSum="1">
+
+        <RadioButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Comedy Playlist"
+            android:id="@+id/comedyRadioButton"
+            android:checked="false" />
+
+        <RadioButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ASMR Playlist"
+            android:id="@+id/asmrRadioButton"
+            android:checked="true" />
+
+        <RadioButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Spotify"
+            android:id="@+id/spotifyRadioButton"
+            android:checked="false" />
+
+        <RadioButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tetris"
+            android:id="@+id/tetrisRadioButton"
+            android:checked="false" />
+
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center_horizontal">
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Back"
+                android:id="@+id/techniquesBackButton"
+                android:layout_row="20"
+                android:layout_column="0" />
+
+        </GridLayout>
+
+    </RadioGroup>
+
 </RelativeLayout>

@@ -35,7 +35,6 @@ public class DatabaseToJSONConverter {
                 val.put("bpm", bpm);
                 val.put("date", date);
                 val.put("isInCalibrating", isInCalibratingPeriod);
-
                 jsonArray.put(val);
             } catch (JSONException e) {
                 e.printStackTrace();
