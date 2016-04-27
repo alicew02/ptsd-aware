@@ -51,4 +51,5 @@
         android:layout_centerHorizontal="true"
         android:src="@drawable/dashboardgraph"
         android:layout_above="@+id/btnStartTechnique" />
+
 </RelativeLayout>

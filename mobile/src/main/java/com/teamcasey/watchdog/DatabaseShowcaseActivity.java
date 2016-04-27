@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
@@ -18,6 +19,8 @@ import android.os.Message;
 import android.content.IntentFilter;
 import android.widget.Toast;
 
+import com.google.android.gms.appindexing.Action;
+import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.wearable.MessageApi;
@@ -38,6 +41,11 @@ public class DatabaseShowcaseActivity extends Activity implements GoogleApiClien
     String datapath = "/message_path";
     Handler handler;
     String TAG = "Mobile DatabaseShowcaseActivity";
+    /**
+     * ATTENTION: This was auto-generated to implement the App Indexing API.
+     * See https://g.co/AppIndexing/AndroidStudio for more information.
+     */
+    private GoogleApiClient client;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -46,6 +54,9 @@ public class DatabaseShowcaseActivity extends Activity implements GoogleApiClien
         setContentView(R.layout.database_layout);
         setupButtonListeners();
         setupMessaging();
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
     }
 
     //Getter such that the async tasks can get the database
@@ -58,6 +69,7 @@ public class DatabaseShowcaseActivity extends Activity implements GoogleApiClien
         final Button deleteButton = (Button) findViewById(R.id.deleterowbtn);
         final Button listButton = (Button) findViewById(R.id.listrowbtn);
 
+        final Button backButton = (Button) findViewById(R.id.databaseBackButton);
 
         addButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -75,6 +87,12 @@ public class DatabaseShowcaseActivity extends Activity implements GoogleApiClien
             public void onClick(View v) {
                 new SendThread(datapath, "Hello wearable device").start();
                 new GetHeartRateRows().execute();
+            }
+        });
+
+        backButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                toDashboard(v);
             }
         });
     }
@@ -160,7 +178,7 @@ public class DatabaseShowcaseActivity extends Activity implements GoogleApiClien
 
     /**
      * Class for deleting all heart rate rows via the background thread
-     *
+     * <p>
      * Doesn't return anything
      */
     private class DeleteHeartRateRow extends AsyncTask<Void, Void, Void> {
@@ -240,7 +258,23 @@ public class DatabaseShowcaseActivity extends Activity implements GoogleApiClien
     @Override
     protected void onStart() {
         super.onStart();
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client.connect();
         googleClient.connect();
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        Action viewAction = Action.newAction(
+                Action.TYPE_VIEW, // TODO: choose an action type.
+                "DatabaseShowcase Page", // TODO: Define a title for the content shown.
+                // TODO: If you have web page content that matches this app activity's content,
+                // make sure this auto-generated web page URL is correct.
+                // Otherwise, set the URL to null.
+                Uri.parse("http://host/path"),
+                // TODO: Make sure this auto-generated app deep link URI is correct.
+                Uri.parse("android-app://com.teamcasey.watchdog/http/host/path")
+        );
+        AppIndex.AppIndexApi.start(client, viewAction);
     }
 
     // Send a message when the data layer connection is successful.
@@ -256,6 +290,22 @@ public class DatabaseShowcaseActivity extends Activity implements GoogleApiClien
             googleClient.disconnect();
         }
         super.onStop();
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        Action viewAction = Action.newAction(
+                Action.TYPE_VIEW, // TODO: choose an action type.
+                "DatabaseShowcase Page", // TODO: Define a title for the content shown.
+                // TODO: If you have web page content that matches this app activity's content,
+                // make sure this auto-generated web page URL is correct.
+                // Otherwise, set the URL to null.
+                Uri.parse("http://host/path"),
+                // TODO: Make sure this auto-generated app deep link URI is correct.
+                Uri.parse("android-app://com.teamcasey.watchdog/http/host/path")
+        );
+        AppIndex.AppIndexApi.end(client, viewAction);
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client.disconnect();
     }
 
     @Override
@@ -284,7 +334,7 @@ public class DatabaseShowcaseActivity extends Activity implements GoogleApiClien
             for (Node node : nodes.getNodes()) {
                 MessageApi.SendMessageResult result = Wearable.MessageApi.sendMessage(googleClient, node.getId(), path, message.getBytes()).await();
                 if (result.getStatus().isSuccess()) {
-                    Log.v(TAG, "SendThread: message send to "+ node.getDisplayName());
+                    Log.v(TAG, "SendThread: message send to " + node.getDisplayName());
 
                 } else {
                     // Log an error
@@ -301,5 +351,10 @@ public class DatabaseShowcaseActivity extends Activity implements GoogleApiClien
 
         Toast toast = Toast.makeText(context, message, duration);
         toast.show();
+    }
+
+    private void toDashboard(View view) {
+        Intent backIntent = new Intent(this, DashboardActivity.class);
+        startActivity(backIntent);
     }
 }

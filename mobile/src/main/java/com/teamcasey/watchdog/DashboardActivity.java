@@ -1,19 +1,112 @@
 package com.teamcasey.watchdog;
 
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.app.Activity;
+import android.provider.MediaStore;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
+
+import java.util.List;
 
 public class DashboardActivity extends Activity {
+
+    private String packName = "";
+    private String filter = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_dashboard);
+        setupButtonListeners();
+    }
+
+    private void setupButtonListeners() {
+
+        final Button launchActivity = (Button) findViewById(R.id.btnStartTechnique);
+        final Button viewActivity = (Button) findViewById(R.id.btnViewTechniques);
+        final ImageButton settingsButton = (ImageButton) findViewById(R.id.btnSettingsMenu);
+
+
+        final RadioGroup techniqueGroup = (RadioGroup) findViewById(R.id.techniquesRadioGroup);
+
+        final RadioButton comedyRadioButton = (RadioButton) findViewById(R.id.comedyRadioButton);
+        final RadioButton asmrRadioButton = (RadioButton) findViewById(R.id.asmrRadioButton);
+        final RadioButton spotifyRadioButton = (RadioButton) findViewById(R.id.spotifyRadioButton);
+        final RadioButton tetrisRadioButton = (RadioButton) findViewById(R.id.tetrisRadioButton);
+
+        launchActivity.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                packName = TechniquesDashboardActivity.packageString;
+                filter = TechniquesDashboardActivity.filter;
+                /**
+                // get selected radio button from radioGroup
+                int selectedId = techniqueGroup.getCheckedRadioButtonId();
+                // find the radiobutton by returned id
+                RadioButton selectedRadio = (RadioButton) findViewById(selectedId);
+
+                if (selectedRadio.getText().equals("Comedy Playlist")) {
+                    packName = "com.google.android.youtube";
+                    filter = "Comedy";
+                } else if (selectedRadio.getText().equals("ASMR Playlist")) {
+                    packName = "com.google.android.youtube";
+                    filter = "ASMR";
+                } else if (selectedRadio.getText().equals("Spotify")) {
+                    packName = "com.spotify.music";
+                } else if (selectedRadio.getText().equals("Tetris")) {
+                    packName = "com.ea.game.tetris2011_row";
+                }
+                **/
+
+                // Intent i = new Intent(TechniquesDashboardActivity.getContext(), Feedback)
+
+
+                // Toast.makeText(DatabaseShowcaseActivity.this, selectedRadio.getText(), Toast.LENGTH_SHORT).show();
+                if (isInstalled(packName)) {
+                    Intent LaunchIntent = getPackageManager()
+                            .getLaunchIntentForPackage(packName);
+                    startActivity(LaunchIntent);
+                } else {
+                    if (packName.equals("com.google.android.youtube")) {
+                        Uri webpage = null;
+                        if (filter.equals("Comedy")) {
+                            // TODO
+                            webpage = Uri.parse("http://www.youtube.com");
+                        }
+                        else if (filter.equals("ASMR")) {
+                            webpage = Uri.parse("https://www.youtube.com/watch?v=1s58rW0_LN4&list=PLAEQD0ULngi5nVGjPmjw-vCE5AuDTLkkQ");
+                        }
+                        Intent LaunchIntent = new Intent(Intent.ACTION_VIEW, webpage);
+                        startActivity(LaunchIntent);
+                    }
+                    else {
+                        try {
+                            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + packName)));
+                        } catch (android.content.ActivityNotFoundException anfe) {
+                            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + packName)));
+                        }
+                    }
+                }
+            }
+        });
+
+        viewActivity.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                toActivityMenu(v);
+            }
+        });
+
+        settingsButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                toSettingsMenu(v);
+            }
+        });
     }
     /**
      * called by res/layout/activity_dashboard.xml
@@ -23,6 +116,16 @@ public class DashboardActivity extends Activity {
 
         Intent showSettings = new Intent(this, SettingsActivity.class);
         startActivity(showSettings);
+    }
+
+    private void toActivityMenu(View view) {
+        Intent activityIntent = new Intent(this, TechniquesDashboardActivity.class);
+        startActivity(activityIntent);
+    }
+
+    private void toSettingsMenu(View view) {
+        Intent settingsIntent = new Intent(this, DatabaseShowcaseActivity.class);
+        startActivity(settingsIntent);
     }
 
     /**
@@ -45,6 +148,25 @@ public class DashboardActivity extends Activity {
 
         Intent showTechMenu = new Intent(this, TechniquesDashboardActivity.class);
         startActivity(showTechMenu);
+    }
+
+
+    // Checks to see if a certain package is installed, according to package name
+    private boolean isInstalled(String packName) {
+
+        final PackageManager pm = getPackageManager();
+        //get a list of installed apps.
+        List<ApplicationInfo> packages = pm.getInstalledApplications(PackageManager.GET_META_DATA);
+
+        for (ApplicationInfo packageInfo : packages) {
+            if (packageInfo.packageName.equals(packName)) {
+                return true;
+            }
+
+            // Log.d(TAG, "Installed package :" + packageInfo.packageName);
+            // Log.d(TAG, "Launch Activity :" + pm.getLaunchIntentForPackage(packageInfo.packageName));
+        }
+        return false;
     }
 
 
