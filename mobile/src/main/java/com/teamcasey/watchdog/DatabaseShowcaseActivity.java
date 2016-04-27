@@ -34,6 +34,9 @@ import org.json.JSONObject;
 /**
  * Created by seth on 3/6/16.
  */
+
+//
+
 public class DatabaseShowcaseActivity extends Activity implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener {
     final public DatabaseHelper database = new DatabaseHelper(this);
