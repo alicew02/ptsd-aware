@@ -14,6 +14,15 @@ public class TechniquesDashboardActivity extends Activity {
     public static String packageString = "com.google.android.youtube";
     public static String filter = "ASMR";
 
+    private int checkedId;
+
+    final RadioButton comedyRadioButton = (RadioButton) findViewById(R.id.comedyRadioButton);
+    final RadioButton asmrRadioButton = (RadioButton) findViewById(R.id.asmrRadioButton);
+    final RadioButton spotifyRadioButton = (RadioButton) findViewById(R.id.spotifyRadioButton);
+    final RadioButton tetrisRadioButton = (RadioButton) findViewById(R.id.tetrisRadioButton);
+
+    RadioGroup techniqueGroup;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -21,13 +30,9 @@ public class TechniquesDashboardActivity extends Activity {
 
         RadioGroup techniqueGroup = (RadioGroup) findViewById(R.id.techniquesRadioGroup);
 
-        final RadioButton comedyRadioButton = (RadioButton) findViewById(R.id.comedyRadioButton);
-        final RadioButton asmrRadioButton = (RadioButton) findViewById(R.id.asmrRadioButton);
-        final RadioButton spotifyRadioButton = (RadioButton) findViewById(R.id.spotifyRadioButton);
-        final RadioButton tetrisRadioButton = (RadioButton) findViewById(R.id.tetrisRadioButton);
-
         techniqueGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
-            public void onCheckedChanged(RadioGroup group, int checkedId) {
+            public void onCheckedChanged(RadioGroup group, int id) {
+                checkedId = id;
                 RadioButton checkedRadioButton = (RadioButton) findViewById(checkedId);
 
                 if (checkedRadioButton.getText().equals("Comedy Playlist")) {
@@ -45,14 +50,16 @@ public class TechniquesDashboardActivity extends Activity {
                     tetrisRadioButton.setChecked(true);
                     packageString = "com.ea.game.tetris2011_row";
                 }
-                    //String text = checkedRadioButton.getText().toString();
-
+                //String text = checkedRadioButton.getText().toString();
             }
         });
-
-
-
         setupButtonListeners();
+    }
+
+    protected void onResume() {
+        super.onResume();
+        RadioButton checkedRadioButton = (RadioButton) findViewById(checkedId);
+        checkedRadioButton.setChecked(true);
     }
 
     private void setupButtonListeners() {
@@ -74,4 +81,3 @@ public class TechniquesDashboardActivity extends Activity {
         //
     }
 }
-//TODO: Onclick launches for buttons
