@@ -3,6 +3,7 @@ package com.teamcasey.watchdog;
 import android.content.Intent;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
+import android.widget.Button;
 
 import com.google.android.gms.wearable.MessageEvent;
 import com.google.android.gms.wearable.WearableListenerService;
@@ -20,6 +21,8 @@ public class ListenerService extends WearableListenerService {
     public void onMessageReceived(MessageEvent messageEvent) {
 
         if (messageEvent.getPath().equals("/message_path")) {
+
+            /**
             final String message = new String(messageEvent.getData());
             Log.v(TAG, "Message path received on phone is: " + messageEvent.getPath());
             Log.v(TAG, "Message received on phone is: " + message);
@@ -29,6 +32,13 @@ public class ListenerService extends WearableListenerService {
             messageIntent.setAction(Intent.ACTION_SEND);
             messageIntent.putExtra("message", message);
             LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent);
+             **/
+
+            // DashboardActivity.getButton().performClick();
+
+            Intent intent = new Intent(this, DashboardActivity.class);
+            intent.putExtra("flag_key", 1);
+            startActivity(intent);
         }
         else {
             super.onMessageReceived(messageEvent);

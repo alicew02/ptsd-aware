@@ -43,10 +43,8 @@ public class DashboardActivity extends Activity {
         launchActivity.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
 
-
                 // int checkedID = mSharedPreference.getInt("MY_SHARED_PREF", MODE_PRIVATE);
                 String selectedRadio = mSharedPreference.getString("techName", "ASMR Playlist");
-
 
                 if (selectedRadio.equals("Comedy Playlist")) {
                     packName = "com.google.android.youtube";
@@ -70,14 +68,12 @@ public class DashboardActivity extends Activity {
                         if (filter.equals("Comedy")) {
                             // TODO
                             webpage = Uri.parse("http://www.youtube.com");
-                        }
-                        else if (filter.equals("ASMR")) {
+                        } else if (filter.equals("ASMR")) {
                             webpage = Uri.parse("https://www.youtube.com/watch?v=1s58rW0_LN4&list=PLAEQD0ULngi5nVGjPmjw-vCE5AuDTLkkQ");
                         }
                         Intent LaunchIntent = new Intent(Intent.ACTION_VIEW, webpage);
                         startActivity(LaunchIntent);
-                    }
-                    else {
+                    } else {
                         try {
                             startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + packName)));
                         } catch (android.content.ActivityNotFoundException anfe) {
@@ -87,6 +83,13 @@ public class DashboardActivity extends Activity {
                 }
             }
         });
+
+        Intent intent = getIntent();
+        int value = intent.getIntExtra("flag_key", 0);
+
+        if (value == 1) {
+            launchActivity.performClick();
+        }
 
         viewActivity.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -104,11 +107,15 @@ public class DashboardActivity extends Activity {
      * called by res/layout/activity_dashboard.xml
      * settings_button: onClick
      */
-    public void showSettings(View v) {
 
-        Intent showSettings = new Intent(this, SettingsActivity.class);
-        startActivity(showSettings);
-    }
+    // Inclusion was causing an error.
+    /**
+     * public void showSettings(View v) {
+     * <p/>
+     * Intent showSettings = new Intent(this, SettingsActivity.class);
+     * startActivity(showSettings);
+     * }
+     **/
 
     private void toActivityMenu(View view) {
         Intent activityIntent = new Intent(this, TechniquesDashboardActivity.class);
@@ -124,6 +131,7 @@ public class DashboardActivity extends Activity {
      * Launches a distraction
      * TODO: Listener service for "launch_technique" that calls provided intent string, Organization of many intents
      * called from start_technique_button: onClick
+     *
      * @param v
      */
     public void launchTechnique(View v) {
@@ -136,7 +144,7 @@ public class DashboardActivity extends Activity {
      * called by res/layout/activity_dashboard.xml
      * settings_button: onClick
      */
-    public void showTechniquesMenu(View v){
+    public void showTechniquesMenu(View v) {
 
         Intent showTechMenu = new Intent(this, TechniquesDashboardActivity.class);
         startActivity(showTechMenu);
@@ -160,8 +168,6 @@ public class DashboardActivity extends Activity {
         }
         return false;
     }
-
-
 
 //// Use for intents If you invoke an intent and there is no app available on the device that can handle the intent, your app will crash.
 //  returned List is not empty, you can safely use the intent

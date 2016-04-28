@@ -181,7 +181,7 @@ public class DatabaseShowcaseActivity extends Activity implements GoogleApiClien
 
     /**
      * Class for deleting all heart rate rows via the background thread
-     * <p>
+     * <p/>
      * Doesn't return anything
      */
     private class DeleteHeartRateRow extends AsyncTask<Void, Void, Void> {
@@ -357,7 +357,7 @@ public class DatabaseShowcaseActivity extends Activity implements GoogleApiClien
     }
 
     private void toDashboard(View view) {
-        Intent backIntent = new Intent(this, DashboardActivity.class);
-        startActivity(backIntent);
+        Intent intent = new Intent(this, DashboardActivity.class);
+        startActivity(intent);
     }
 }

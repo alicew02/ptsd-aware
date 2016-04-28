@@ -243,6 +243,14 @@ public class ConstantHeartRateActivity extends Activity implements SensorEventLi
             }
 
             if (this.maxRate < event.values[0]) {
+
+                // Pinging the android app...
+                // Likely does not work
+                Intent messageIntent = new Intent();
+                messageIntent.setAction(Intent.ACTION_SEND);
+                messageIntent.putExtra("/message_path", "");
+                LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent);
+
                 askUserIfTheyWishToRelax();
             }
         }

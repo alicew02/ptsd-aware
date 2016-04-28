@@ -14,13 +14,15 @@ import android.content.SharedPreferences;
 
 public class TechniquesDashboardActivity extends Activity {
 
+    // Possible, very simple guided breathing: http://i.imgur.com/Huou7Gh.gif
+
     RadioGroup radioGroup;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_techniques_dashboard);
-        radioGroup = (RadioGroup)findViewById(R.id.techniquesRadioGroup);
+        radioGroup = (RadioGroup) findViewById(R.id.techniquesRadioGroup);
         radioGroup.setOnCheckedChangeListener(radioGroupOnCheckedChangeListener);
 
         final Button backButton = (Button) findViewById(R.id.techniquesBackButton);
@@ -33,39 +35,39 @@ public class TechniquesDashboardActivity extends Activity {
 
         LoadPreferences();
     }
-    
+
     OnCheckedChangeListener radioGroupOnCheckedChangeListener =
-      new OnCheckedChangeListener(){
+            new OnCheckedChangeListener() {
 
-    @Override
-    public void onCheckedChanged(RadioGroup group, int checkedId) {
+                @Override
+                public void onCheckedChanged(RadioGroup group, int checkedId) {
 
-     RadioButton checkedRadioButton = (RadioButton)radioGroup.findViewById(checkedId);
-     int checkedIndex = radioGroup.indexOfChild(checkedRadioButton);
-     String techName = checkedRadioButton.getText().toString();
-     
-     SavePreferences(checkedIndex, techName);
+                    RadioButton checkedRadioButton = (RadioButton) radioGroup.findViewById(checkedId);
+                    int checkedIndex = radioGroup.indexOfChild(checkedRadioButton);
+                    String techName = checkedRadioButton.getText().toString();
+
+                    SavePreferences(checkedIndex, techName);
+                }
+            };
+
+    private void SavePreferences(int value, String name) {
+
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+
+        SharedPreferences.Editor preferenceEditor = sharedPreferences.edit();
+
+        preferenceEditor.putString("techName", name);
+        preferenceEditor.putInt("id", value);
+        preferenceEditor.commit();
     }
-      };
 
- private void SavePreferences(int value, String name) {
+    private void LoadPreferences() {
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 
-     SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-
-     SharedPreferences.Editor preferenceEditor = sharedPreferences.edit();
-
-     preferenceEditor.putString("techName", name);
-     preferenceEditor.putInt("id", value);
-     preferenceEditor.commit();
- }
- 
- private void LoadPreferences(){
-     SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-
-  int savedRadioIndex = sharedPreferences.getInt("id", 0);
-     RadioButton savedCheckedRadioButton = (RadioButton)radioGroup.getChildAt(savedRadioIndex);
-  savedCheckedRadioButton.setChecked(true);
- }
+        int savedRadioIndex = sharedPreferences.getInt("id", 0);
+        RadioButton savedCheckedRadioButton = (RadioButton) radioGroup.getChildAt(savedRadioIndex);
+        savedCheckedRadioButton.setChecked(true);
+    }
 
     private void toDashboard(View view) {
         Intent backIntent = new Intent(this, DashboardActivity.class);
