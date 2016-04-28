@@ -3,11 +3,13 @@ package com.teamcasey.watchdog;
 //
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.app.Activity;
+import android.preference.PreferenceManager;
 import android.provider.MediaStore;
 import android.view.View;
 import android.widget.Button;
@@ -18,6 +20,7 @@ import android.widget.RadioGroup;
 import java.util.List;
 
 public class DashboardActivity extends Activity {
+
 
     private String packName = "";
     private String filter = null;
@@ -35,41 +38,28 @@ public class DashboardActivity extends Activity {
         final Button viewActivity = (Button) findViewById(R.id.btnViewTechniques);
         final ImageButton settingsButton = (ImageButton) findViewById(R.id.btnSettingsMenu);
 
-
-        final RadioGroup techniqueGroup = (RadioGroup) findViewById(R.id.techniquesRadioGroup);
-
-        final RadioButton comedyRadioButton = (RadioButton) findViewById(R.id.comedyRadioButton);
-        final RadioButton asmrRadioButton = (RadioButton) findViewById(R.id.asmrRadioButton);
-        final RadioButton spotifyRadioButton = (RadioButton) findViewById(R.id.spotifyRadioButton);
-        final RadioButton tetrisRadioButton = (RadioButton) findViewById(R.id.tetrisRadioButton);
+        final SharedPreferences mSharedPreference = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
 
         launchActivity.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                packName = TechniquesDashboardActivity.packageString;
-                filter = TechniquesDashboardActivity.filter;
-                /**
-                // get selected radio button from radioGroup
-                int selectedId = techniqueGroup.getCheckedRadioButtonId();
-                // find the radiobutton by returned id
-                RadioButton selectedRadio = (RadioButton) findViewById(selectedId);
 
-                if (selectedRadio.getText().equals("Comedy Playlist")) {
+
+                // int checkedID = mSharedPreference.getInt("MY_SHARED_PREF", MODE_PRIVATE);
+                String selectedRadio = mSharedPreference.getString("techName", "ASMR Playlist");
+
+
+                if (selectedRadio.equals("Comedy Playlist")) {
                     packName = "com.google.android.youtube";
                     filter = "Comedy";
-                } else if (selectedRadio.getText().equals("ASMR Playlist")) {
+                } else if (selectedRadio.equals("ASMR Playlist")) {
                     packName = "com.google.android.youtube";
                     filter = "ASMR";
-                } else if (selectedRadio.getText().equals("Spotify")) {
+                } else if (selectedRadio.equals("Spotify")) {
                     packName = "com.spotify.music";
-                } else if (selectedRadio.getText().equals("Tetris")) {
+                } else if (selectedRadio.equals("Tetris")) {
                     packName = "com.ea.game.tetris2011_row";
                 }
-                **/
 
-                // Intent i = new Intent(TechniquesDashboardActivity.getContext(), Feedback)
-
-
-                // Toast.makeText(DatabaseShowcaseActivity.this, selectedRadio.getText(), Toast.LENGTH_SHORT).show();
                 if (isInstalled(packName)) {
                     Intent LaunchIntent = getPackageManager()
                             .getLaunchIntentForPackage(packName);
@@ -170,6 +160,7 @@ public class DashboardActivity extends Activity {
         }
         return false;
     }
+
 
 
 //// Use for intents If you invoke an intent and there is no app available on the device that can handle the intent, your app will crash.
