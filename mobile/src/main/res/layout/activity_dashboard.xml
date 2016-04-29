@@ -11,26 +11,35 @@
     android:clickable="true"
     android:contextClickable="true"
     android:onClick="showSettings">
-
+<!--start technique-->
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/dashboard_start_technique_button_text"
+        style="@style/ButtonText"
+        android:fontFamily="sans-serif-light"
+        android:textSize="18dp"
         android:id="@+id/btnStartTechnique"
-        android:layout_centerVertical="true"
-        android:layout_centerHorizontal="true"
+        android:background="@drawable/button"
         android:onClick="launchTechnique"
-        android:nestedScrollingEnabled="true" />
-
+        android:layout_marginTop="16dp"
+        android:layout_below="@+id/imageView"
+        android:layout_centerHorizontal="true" />
+<!--view techniques-->
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/dashboard_view_techniques_menu_button_text"
+        style="@style/ButtonText"
+        android:fontFamily="sans-serif-light"
+        android:textSize="18dp"
         android:id="@+id/btnViewTechniques"
+        android:background="@drawable/button"
+        android:onClick="showTechniquesMenu"
+        android:layout_marginTop="16dp"
         android:layout_below="@+id/btnStartTechnique"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="20dp"
-        android:onClick="showTechniquesMenu" />
+        android:layout_alignLeft="@+id/btnStartTechnique"
+        android:layout_alignStart="@+id/btnStartTechnique" />
 
     <ImageButton
         android:layout_width="wrap_content"
@@ -40,16 +49,15 @@
         android:layout_alignParentRight="true"
         android:layout_alignParentEnd="true"
         android:src="@drawable/ic_settings_button_colored"
-        android:background="#6a2a2121"
+        android:background="@android:color/transparent"
         android:onClick="showSettings" />
 
     <ImageView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:id="@+id/imageView"
-        android:layout_alignParentTop="true"
-        android:layout_centerHorizontal="true"
         android:src="@drawable/dashboardgraph"
-        android:layout_above="@+id/btnStartTechnique" />
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true" />
 
 </RelativeLayout>

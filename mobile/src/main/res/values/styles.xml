@@ -5,4 +5,9 @@
         <!-- Customize your theme here. -->
     </style>
 
+    <style name="ButtonText" >
+        <item name="android:textColor">#E8E8E8            </item>
+        <item name="android:textStyle">normal</item>
+
+    </style>
 </resources>

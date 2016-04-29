@@ -43,7 +43,7 @@
                 android:resource="@xml/watch_face" />
             <meta-data
                 android:name="com.google.android.wearable.watchface.preview"
-                android:resource="@drawable/ic_launcher" />
+                android:resource="@drawable/hp_dog.png" />
             <intent-filter>
                 <action android:name="android.service.wallpaper.WallpaperService" />
                 <category
